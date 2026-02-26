@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vofvof – Virtual Office</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #f0f2f5;
+        color: #222;
+        min-height: 100vh;
+      }
+      header {
+        background: #1a73e8;
+        color: #fff;
+        padding: 1rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      header h1 { font-size: 1.4rem; }
+      #app { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+      #join-form {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08);
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+      #join-form label { display: flex; flex-direction: column; gap: .25rem; font-size: .85rem; color: #555; }
+      #join-form input, #join-form select {
+        padding: .5rem .75rem;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+      button {
+        padding: .55rem 1.2rem;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: .95rem;
+        font-weight: 600;
+      }
+      #btn-join { background: #1a73e8; color: #fff; }
+      #btn-leave { background: #e84040; color: #fff; display: none; }
+      #status-row {
+        margin-top: 1rem;
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #status-row select { padding: .4rem .7rem; border-radius: 8px; border: 1px solid #ccc; }
+      #status-row label { font-size: .85rem; color: #555; }
+      #members-section { margin-top: 2rem; }
+      #members-section h2 { margin-bottom: 1rem; font-size: 1.1rem; color: #444; }
+      #members-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1rem;
+      }
+      .member-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        display: flex;
+        flex-direction: column;
+        gap: .4rem;
+      }
+      .member-card .name { font-weight: 700; font-size: 1rem; }
+      .member-card .platform { font-size: .8rem; color: #777; }
+      .member-card .status-badge {
+        display: inline-block;
+        padding: .2rem .6rem;
+        border-radius: 20px;
+        font-size: .78rem;
+        font-weight: 600;
+        width: fit-content;
+      }
+      .status-online  { background: #d4edda; color: #155724; }
+      .status-busy    { background: #f8d7da; color: #721c24; }
+      .status-away    { background: #fff3cd; color: #856404; }
+      .status-offline { background: #e2e3e5; color: #383d41; }
+      .btn-call {
+        margin-top: .5rem;
+        background: #1a73e8;
+        color: #fff;
+        font-size: .82rem;
+        padding: .35rem .8rem;
+        border-radius: 6px;
+        align-self: flex-start;
+      }
+      .btn-call:disabled { background: #aaa; cursor: not-allowed; }
+      #call-area {
+        margin-top: 2rem;
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        display: none;
+      }
+      #call-area h2 { margin-bottom: 1rem; font-size: 1rem; }
+      #videos { display: flex; gap: 1rem; flex-wrap: wrap; }
+      video { width: 320px; height: 240px; background: #000; border-radius: 8px; }
+      #btn-end-call { background: #e84040; color: #fff; margin-top: 1rem; }
+      #toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: #333;
+        color: #fff;
+        padding: .7rem 1.2rem;
+        border-radius: 8px;
+        font-size: .9rem;
+        opacity: 0;
+        transition: opacity .3s;
+        pointer-events: none;
+      }
+      #toast.show { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🏢 vofvof – Virtual Office</h1>
+    </header>
+    <div id="app">
+      <form id="join-form">
+        <label>
+          Your name
+          <input id="input-name" type="text" placeholder="Alice" required />
+        </label>
+        <label>
+          Platform
+          <select id="input-platform">
+            <option value="macOS">macOS</option>
+            <option value="Windows">Windows</option>
+            <option value="Linux">Linux</option>
+          </select>
+        </label>
+        <button type="submit" id="btn-join">Join Office</button>
+        <button type="button" id="btn-leave">Leave Office</button>
+      </form>
+
+      <div id="status-row" style="display:none">
+        <label>My status:
+          <select id="my-status">
+            <option value="online">🟢 Online</option>
+            <option value="busy">🔴 Busy</option>
+            <option value="away">🟡 Away</option>
+            <option value="offline">⚫ Offline</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="members-section">
+        <h2>Team members (<span id="member-count">0</span>)</h2>
+        <div id="members-list"></div>
+      </div>
+
+      <div id="call-area">
+        <h2>📞 P2P Call</h2>
+        <div id="videos">
+          <video id="local-video" autoplay muted playsinline></video>
+          <video id="remote-video" autoplay playsinline></video>
+        </div>
+        <button id="btn-end-call">End Call</button>
+      </div>
+    </div>
+    <div id="toast"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
