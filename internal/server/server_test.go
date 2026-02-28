@@ -173,6 +173,22 @@ func TestHandleMember_UpdateStatus_NotFound(t *testing.T) {
 	}
 }
 
+func TestHandleMember_UpdateStatus_InvalidStatus(t *testing.T) {
+	srv := newSrv()
+	m := joinMember(t, srv, "Bob", "Windows")
+	id := m["id"].(string)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/members/"+id+"/status",
+		jsonBody(t, map[string]string{"status": "hacked"}))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid status, got %d", rec.Code)
+	}
+}
+
 func TestHandleMember_UpdateStatus_InvalidJSON(t *testing.T) {
 	srv := newSrv()
 	m := joinMember(t, srv, "Bob", "Windows")

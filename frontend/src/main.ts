@@ -43,11 +43,20 @@ function renderMembers(): void {
     card.innerHTML = `
       <div class="name">${esc(m.name)}${isMe ? ' (you)' : ''}</div>
       <div class="platform">${esc(m.platform)}</div>
-      <span class="status-badge status-${m.status}">${m.status}</span>
-      ${!isMe && myMember ? `<button class="btn-call" data-peer="${m.id}">📞 Call</button>` : ''}
     `;
+    const statusSpan = document.createElement('span');
+    statusSpan.classList.add('status-badge');
+    const safeStatus = String(m.status).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (safeStatus) statusSpan.classList.add(`status-${safeStatus}`);
+    statusSpan.textContent = m.status;
+    card.appendChild(statusSpan);
     if (!isMe && myMember) {
-      card.querySelector<HTMLButtonElement>('.btn-call')!.addEventListener('click', () => startCall(m.id));
+      const callButton = document.createElement('button');
+      callButton.className = 'btn-call';
+      callButton.textContent = '📞 Call';
+      callButton.dataset.peer = m.id;
+      callButton.addEventListener('click', () => startCall(m.id));
+      card.appendChild(callButton);
     }
     membersList.appendChild(card);
   }

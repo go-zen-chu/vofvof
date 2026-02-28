@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -44,8 +45,12 @@ func (h *hub) broadcast(msg any) {
 		return
 	}
 	h.mu.RLock()
-	defer h.mu.RUnlock()
+	conns := make([]*websocket.Conn, 0, len(h.conns))
 	for c := range h.conns {
+		conns = append(conns, c)
+	}
+	h.mu.RUnlock()
+	for _, c := range conns {
 		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
 			slog.Warn("ws write error", "err", err)
 		}
@@ -133,7 +138,11 @@ func (s *Server) handleMembers(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, s.store.List())
 	case http.MethodPost:
 		var req joinRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		if strings.TrimSpace(req.Name) == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 			return
 		}
@@ -170,10 +179,18 @@ func (s *Server) handleMember(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := s.store.UpdateStatus(id, req.Status); err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			if errors.Is(err, member.ErrInvalidStatus) {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			} else {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+			}
 			return
 		}
 		m := s.store.Get(id)
+		if m == nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "member not found"})
+			return
+		}
 		s.hub.broadcast(wsEvent{Type: "status_changed", Payload: m})
 		writeJSON(w, http.StatusOK, m)
 		return
@@ -234,7 +251,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleStatic serves embedded frontend files from the "frontend/dist" directory.
+// handleStatic serves static frontend files from the "frontend/dist" directory.
 func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.Dir("frontend/dist")).ServeHTTP(w, r)
 }

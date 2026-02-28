@@ -1,12 +1,16 @@
 package member
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// ErrInvalidStatus is returned when an unknown status value is provided.
+var ErrInvalidStatus = errors.New("invalid status")
 
 // Status represents the online status of a member.
 type Status string
@@ -52,7 +56,8 @@ func (s *Store) Add(name, platform string) *Member {
 		LastSeen: time.Now(),
 	}
 	s.members[m.ID] = m
-	return m
+	copy := *m
+	return &copy
 }
 
 // Remove deletes a member by ID. Returns an error if the member does not exist.
@@ -66,8 +71,13 @@ func (s *Store) Remove(id string) error {
 	return nil
 }
 
-// UpdateStatus changes the status of a member. Returns an error if not found.
+// UpdateStatus changes the status of a member. Returns an error if not found or status is invalid.
 func (s *Store) UpdateStatus(id string, status Status) error {
+	switch status {
+	case StatusOnline, StatusBusy, StatusAway, StatusOffline:
+	default:
+		return fmt.Errorf("%w: %q", ErrInvalidStatus, status)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	m, ok := s.members[id]
