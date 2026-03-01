@@ -241,7 +241,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	s.hub.add(conn)
 	defer func() {
 		s.hub.remove(conn)
-		conn.Close()
+		_ = conn.Close()
 	}()
 	// Keep the connection alive; client messages are ignored.
 	for {
