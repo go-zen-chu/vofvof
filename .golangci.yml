@@ -1,4 +1,15 @@
+version: "2"
+
 # options for analysis running
 run:
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 1m
+
+linters:
+  exclusions:
+    rules:
+      # Closing HTTP response bodies and WebSocket connections in tests is
+      # best-effort cleanup; ignore errcheck there.
+      - path: _test\.go
+        linters:
+          - errcheck
